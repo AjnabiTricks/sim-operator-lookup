@@ -1,6 +1,11 @@
 // api/lookup.js
 const axios = require('axios');
 
+// ============================================
+// CREDIT: https://t.me/AZ_Tricks
+// Telegram: @AZ_Tricks
+// ============================================
+
 // Session store with auto-renewal
 const sessionStore = {
   cookies: null,
@@ -17,12 +22,11 @@ function generateUniqueId() {
   });
 }
 
-// Fetch fresh session from Ding with better headers
+// Fetch fresh session from Ding
 async function fetchFreshSession() {
   console.log('🔄 Fetching new session...');
   
   try {
-    // First, get main page to establish session
     const response = await axios.get('https://www.ding.com/', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36',
@@ -30,20 +34,12 @@ async function fetchFreshSession() {
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1'
+        'Upgrade-Insecure-Requests': '1'
       },
       timeout: 15000,
-      maxRedirects: 5,
-      validateStatus: function (status) {
-        return status >= 200 && status < 500;
-      }
+      maxRedirects: 5
     });
 
-    // Extract cookies from response
     let cookieString = '';
     const cookies = response.headers['set-cookie'] || [];
     
@@ -54,16 +50,12 @@ async function fetchFreshSession() {
         .join('; ');
     }
 
-    // If no cookies received, try to get from topup page
     if (!cookieString) {
-      console.log('🔄 No cookies from main page, trying topup page...');
       const topupResponse = await axios.get('https://www.ding.com/topup?countryIso=PK', {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive'
+          'Accept-Language': 'en-US,en;q=0.9'
         },
         timeout: 15000,
         maxRedirects: 5
@@ -78,7 +70,6 @@ async function fetchFreshSession() {
       }
     }
 
-    // Add required cookies with proper values
     const requiredCookies = {
       'OptanonAlertBoxClosed': '2026-08-20T18:05:09.581Z',
       'OptanonConsent': 'isGpcEnabled=0&datestamp=Thu+Aug+20+2026+23%3A12%3A48+GMT%2B0500+(Pakistan+Standard+Time)&version=6.26.0&isIABGlobal=false&hosts=&consentId=22c86e3a-3cd4-4a72-ad8a-cf8eb0729add&interactionCount=1&landingPath=NotLandingPage&groups=C0005%3A1%2CC0002%3A1%2CC0003%3A1%2CC0001%3A1%2CC0004%3A1&geolocation=PK%3BPB&AwaitingReconsent=false',
@@ -88,35 +79,28 @@ async function fetchFreshSession() {
       'eze_track_session': `firstVisit=${new Date().toISOString()}|sessionsCount=1|lastVisit=${new Date().toISOString()}`
     };
 
-    // Add missing cookies
     for (const [key, value] of Object.entries(requiredCookies)) {
       if (!cookieString.includes(key)) {
         cookieString += `; ${key}=${value}`;
       }
     }
 
-    // Clean up cookie string
     cookieString = cookieString.replace(/^; /, '');
 
-    // Update store
     sessionStore.cookies = cookieString;
     sessionStore.lastFetched = Date.now();
     
     console.log('✅ Session renewed successfully');
-    console.log('📝 Cookie length:', cookieString.length);
     return cookieString;
     
   } catch (error) {
     console.error('❌ Session fetch failed:', error.message);
     
-    // Try to use existing session if available
     if (sessionStore.cookies) {
       console.log('⚠️ Using existing session');
       return sessionStore.cookies;
     }
     
-    // Create fallback session with required cookies
-    console.log('🔄 Creating fallback session...');
     const fallbackCookies = {
       'OptanonAlertBoxClosed': '2026-08-20T18:05:09.581Z',
       'OptanonConsent': 'isGpcEnabled=0&datestamp=Thu+Aug+20+2026+23%3A12%3A48+GMT%2B0500+(Pakistan+Standard+Time)&version=6.26.0&isIABGlobal=false&hosts=&consentId=22c86e3a-3cd4-4a72-ad8a-cf8eb0729add&interactionCount=1&landingPath=NotLandingPage&groups=C0005%3A1%2CC0002%3A1%2CC0003%3A1%2CC0001%3A1%2CC0004%3A1&geolocation=PK%3BPB&AwaitingReconsent=false',
@@ -171,13 +155,18 @@ module.exports = async (req, res) => {
       if (!number) {
         return res.status(400).json({ 
           success: false, 
-          error: 'Number required. Use ?number=923xxxxxxxxx' 
+          error: 'Number required. Use ?number=923xxxxxxxxx',
+          credit: 'https://t.me/AZ_Tricks'
         });
       }
       
       req.body = { phoneNumber: number, countryIso: req.query.country || 'PK' };
     } catch (error) {
-      return res.status(400).json({ success: false, error: 'Invalid request' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid request',
+        credit: 'https://t.me/AZ_Tricks'
+      });
     }
   }
 
@@ -185,7 +174,8 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ 
       success: false, 
-      error: 'Method not allowed. Use POST or GET.' 
+      error: 'Method not allowed. Use POST or GET.',
+      credit: 'https://t.me/AZ_Tricks'
     });
   }
 
@@ -195,7 +185,8 @@ module.exports = async (req, res) => {
     if (!phoneNumber) {
       return res.status(400).json({ 
         success: false, 
-        error: 'phoneNumber is required' 
+        error: 'phoneNumber is required',
+        credit: 'https://t.me/AZ_Tricks'
       });
     }
 
@@ -203,23 +194,21 @@ module.exports = async (req, res) => {
     if (cleanNumber.length < 10) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invalid phone number format' 
+        error: 'Invalid phone number format',
+        credit: 'https://t.me/AZ_Tricks'
       });
     }
 
     console.log(`📞 Looking up: ${cleanNumber} (${countryIso})`);
 
-    // Get session with retry
     let cookieString;
     let retries = 3;
-    let lastError = null;
     
     while (retries > 0) {
       try {
         cookieString = await getValidSession();
         break;
       } catch (error) {
-        lastError = error;
         retries--;
         console.log(`⚠️ Session fetch failed, retries left: ${retries}`);
         if (retries > 0) {
@@ -269,24 +258,36 @@ module.exports = async (req, res) => {
 
     console.log('✅ API call successful');
 
-    return res.status(200).json({
+    // Extract only operator details
+    const operatorData = response.data.operators && response.data.operators[0];
+    const normalizedData = response.data.normalizedPhoneNumber;
+
+    // Clean response - only operator details with credit
+    const cleanResponse = {
       success: true,
-      data: response.data,
-      meta: {
-        phoneNumber: cleanNumber,
-        country: countryIso,
-        sessionRenewed: (Date.now() - sessionStore.lastFetched) < 5000,
-        sessionAge: Math.round((Date.now() - sessionStore.lastFetched) / 1000)
+      operator: {
+        name: operatorData?.name || 'Unknown',
+        code: operatorData?.operatorCode || 'N/A',
+        id: operatorData?.operatorId || 'N/A',
+        country: operatorData?.countryIso || countryIso,
+        confidence: response.data.confidence || 'Unknown'
+      },
+      number: {
+        original: cleanNumber,
+        formatted: normalizedData?.internationalFormattedNumber || cleanNumber,
+        country: normalizedData?.countryIso || countryIso
+      },
+      credit: {
+        channel: 'https://t.me/AZ_Tricks',
+        telegram: '@AZ_Tricks',
+        message: 'Developed by AZ_Tricks'
       }
-    });
+    };
+
+    return res.status(200).json(cleanResponse);
 
   } catch (error) {
     console.error('🔥 API Error:', error.message);
-    
-    if (error.response) {
-      console.error('📝 Response status:', error.response.status);
-      console.error('📝 Response data:', error.response.data);
-    }
     
     if (error.response?.status === 401 || error.response?.status === 403) {
       console.log('🔄 Session expired, clearing cache...');
@@ -297,7 +298,7 @@ module.exports = async (req, res) => {
         success: false,
         error: 'Session expired',
         retry: true,
-        message: 'Please retry the request'
+        credit: 'https://t.me/AZ_Tricks'
       });
     }
 
@@ -306,15 +307,14 @@ module.exports = async (req, res) => {
         success: false,
         error: 'Rate limit exceeded',
         retryAfter: 60,
-        message: 'Please wait before retrying'
+        credit: 'https://t.me/AZ_Tricks'
       });
     }
 
     return res.status(error.response?.status || 500).json({
       success: false,
-      error: error.response?.data?.message || error.message || 'Unable to establish session',
-      status: error.response?.status || 500,
-      message: 'Failed to lookup operator. Please try again.'
+      error: error.message || 'Failed to lookup operator',
+      credit: 'https://t.me/AZ_Tricks'
     });
   }
 };
