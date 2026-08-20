@@ -1,12 +1,18 @@
 {
   "version": 2,
-  "functions": {
-    "api/lookup.js": {
-      "maxDuration": 10,
-      "memory": 1024,
-      "runtime": "nodejs18.x"
+  "builds": [
+    {
+      "src": "api/lookup.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
+  "routes": [
+    {
+      "src": "/api/lookup",
+      "dest": "/api/lookup.js",
+      "methods": ["GET", "POST", "OPTIONS"]
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
